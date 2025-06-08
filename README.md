@@ -2,8 +2,6 @@
 
 A modern, intuitive priority matrix application built with React and TypeScript. Organize your tasks using the Eisenhower Matrix (Urgent/Important) methodology with a beautiful, responsive interface.
 
-![dcyde Logo](./public/logo.png)
-
 ## ✨ Features
 
 - **🎯 Priority Matrix**: Organize tasks using the proven Eisenhower Matrix methodology
