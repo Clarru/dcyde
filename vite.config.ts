@@ -5,6 +5,11 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: '/', // For custom domain (dcyde.clarru.com)
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets'
+  },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
