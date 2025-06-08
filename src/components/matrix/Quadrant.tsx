@@ -304,8 +304,14 @@ export const Quadrant: React.FC<QuadrantProps> = ({
       // Move the task with insertion index 
       moveTask(taskId, sourceQuadrant, quadrantKey, insertIndex);
       
+      // Clear the insertion preview after successful drop
+      onSetInsertionPreview(null);
+      
     } catch (error) {
       console.error('Error handling enhanced drop:', error);
+    } finally {
+      // Always clear insertion preview, even if there was an error
+      onSetInsertionPreview(null);
     }
   };
 

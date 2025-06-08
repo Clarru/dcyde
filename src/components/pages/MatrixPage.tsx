@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from '../common/Header';
 import { HelpModal } from '../common/HelpModal';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Sidebar } from '../common/Sidebar';
 import { Quadrant } from '../matrix/Quadrant';
 import { CreateMatrixModal } from '../matrix/CreateMatrixModal';
@@ -11,7 +12,7 @@ import { useMatrixTaskSync } from '../../hooks/useMatrixTaskSync';
 import { useTaskStore } from '../../store/useTaskStore';
 import { QUADRANT_CONFIG } from '../../utils/constants';
 import { exportTasks } from '../../utils/export';
-import { QuadrantKey, TaskState } from '../../types';
+import { QuadrantKey } from '../../types';
 
 interface MatrixPageProps {
   matrixId: string;
@@ -22,9 +23,10 @@ interface MatrixPageProps {
 export const MatrixPage: React.FC<MatrixPageProps> = ({ matrixId, onNavigateToAll, onNavigateToMatrix }) => {
   const [showHelp, setShowHelp] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [currentPeriod, setCurrentPeriod] = useState('December 2024');
   
-  const { getCurrentMatrix, updateMatrix, setCurrentMatrix, createMatrix } = useMatrixStore();
+  const { getCurrentMatrix, updateMatrix, setCurrentMatrix, createMatrix, deleteMatrix } = useMatrixStore();
   const tasks = useTaskStore();
   const { success, error, ToastContainer } = useToast();
   
@@ -101,6 +103,20 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({ matrixId, onNavigateToAl
     onNavigateToMatrix(newMatrixId);
   };
 
+  const handleDeleteMatrix = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteMatrix = () => {
+    deleteMatrix(matrixId);
+    setShowDeleteConfirm(false);
+    onNavigateToAll(); // Navigate back to all matrices after deletion
+  };
+
+  const cancelDeleteMatrix = () => {
+    setShowDeleteConfirm(false);
+  };
+
   const handleTaskMoved = (taskTitle: string, targetMatrixName: string) => {
     success(`Task moved to ${targetMatrixName}`, `"${taskTitle}" has been moved successfully.`);
   };
@@ -140,6 +156,7 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({ matrixId, onNavigateToAl
             onMatrixTitleChange={handleMatrixTitleChange}
             onNavigateToAll={onNavigateToAll}
             onCreateMatrix={() => setShowCreateModal(true)}
+            onDeleteMatrix={handleDeleteMatrix}
           />
         </div>
 
@@ -179,6 +196,17 @@ export const MatrixPage: React.FC<MatrixPageProps> = ({ matrixId, onNavigateToAl
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           onCreateMatrix={handleCreateMatrix}
+        />
+
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          title="Delete Matrix"
+          message={`Are you sure you want to delete "${currentMatrix.name}"? This will permanently delete all tasks in this matrix. This action cannot be undone.`}
+          confirmText="Delete Matrix"
+          cancelText="Cancel"
+          onConfirm={confirmDeleteMatrix}
+          onCancel={cancelDeleteMatrix}
+          danger
         />
 
         <ToastContainer />

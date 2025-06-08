@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import { useMatrixStore } from '../../store/useMatrixStore';
 import { MatrixCard } from '../matrix/MatrixCard';
 import { CreateMatrixModal } from '../matrix/CreateMatrixModal';
-import { Header } from '../common/Header';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Logo } from '../common/Logo';
 
 interface AllMatricesPageProps {
@@ -12,7 +12,12 @@ interface AllMatricesPageProps {
 
 export const AllMatricesPage: React.FC<AllMatricesPageProps> = ({ onNavigateToMatrix }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const { getMatrixSummaries, createMatrix } = useMatrixStore();
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; matrixId: string; matrixName: string }>({
+    isOpen: false,
+    matrixId: '',
+    matrixName: ''
+  });
+  const { getMatrixSummaries, createMatrix, deleteMatrix } = useMatrixStore();
   
   const matrices = getMatrixSummaries();
 
@@ -24,6 +29,23 @@ export const AllMatricesPage: React.FC<AllMatricesPageProps> = ({ onNavigateToMa
 
   const handleOpenMatrix = (matrixId: string) => {
     onNavigateToMatrix(matrixId);
+  };
+
+  const handleDeleteMatrix = (matrixId: string, matrixName: string) => {
+    setDeleteConfirm({
+      isOpen: true,
+      matrixId,
+      matrixName
+    });
+  };
+
+  const confirmDelete = () => {
+    deleteMatrix(deleteConfirm.matrixId);
+    setDeleteConfirm({ isOpen: false, matrixId: '', matrixName: '' });
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirm({ isOpen: false, matrixId: '', matrixName: '' });
   };
 
   // Empty state when no matrices exist
@@ -98,6 +120,7 @@ export const AllMatricesPage: React.FC<AllMatricesPageProps> = ({ onNavigateToMa
                   key={matrix.id}
                   matrix={matrix}
                   onOpen={() => handleOpenMatrix(matrix.id)}
+                  onDelete={() => handleDeleteMatrix(matrix.id, matrix.name)}
                 />
               ))}
               
@@ -117,6 +140,17 @@ export const AllMatricesPage: React.FC<AllMatricesPageProps> = ({ onNavigateToMa
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
           onCreateMatrix={handleCreateMatrix}
+        />
+
+        <ConfirmDialog
+          isOpen={deleteConfirm.isOpen}
+          title="Delete Matrix"
+          message={`Are you sure you want to delete "${deleteConfirm.matrixName}"? This will permanently delete all tasks in this matrix. This action cannot be undone.`}
+          confirmText="Delete Matrix"
+          cancelText="Cancel"
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+          danger
         />
       </div>
     </div>

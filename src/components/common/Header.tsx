@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, HelpCircle, Edit2, ArrowLeft, Plus } from 'lucide-react';
+import { Download, HelpCircle, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { DateSelector } from './DateSelector';
 import { Breadcrumb, BreadcrumbItem } from './Breadcrumb';
 
@@ -13,6 +13,7 @@ interface HeaderProps {
   onMatrixTitleChange: (title: string) => void;
   onNavigateToAll?: () => void;
   onCreateMatrix?: () => void;
+  onDeleteMatrix?: () => void;
   breadcrumbs?: BreadcrumbItem[];
   showDateSelector?: boolean;
 }
@@ -21,12 +22,12 @@ export const Header: React.FC<HeaderProps> = ({
   showHelp, 
   onToggleHelp, 
   onExport, 
-  currentPeriod,
   onPeriodChange,
   matrixTitle,
   onMatrixTitleChange,
   onNavigateToAll,
   onCreateMatrix,
+  onDeleteMatrix,
   breadcrumbs,
   showDateSelector = true
 }) => {
@@ -107,6 +108,16 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Plus className="w-4 h-4" />
               <span className="text-sm font-medium">New</span>
+            </button>
+          )}
+          
+          {onDeleteMatrix && (
+            <button
+              onClick={onDeleteMatrix}
+              className="p-2 text-gray-600 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              title="Delete matrix"
+            >
+              <Trash2 className="w-5 h-5" />
             </button>
           )}
           

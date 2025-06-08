@@ -79,10 +79,11 @@ export const useDragAndDrop = () => {
       // Move the task with insertion index
       moveTask(taskId, sourceQuadrant, targetQuadrant, insertIndex || undefined);
       
-      // Clear drag state
+      // Clear ALL drag state
       setDraggedItem(null);
       setDragOverTarget(null);
       setInsertIndex(null);
+      setInsertionPreview(null);
     } catch (error) {
       console.error('Error handling drop:', error);
     }
@@ -106,10 +107,11 @@ export const useDragAndDrop = () => {
       // Move the task with specific insertion index
       moveTask(taskId, sourceQuadrant, targetQuadrant, targetInsertIndex);
       
-      // Clear drag state
+      // Clear ALL drag state
       setDraggedItem(null);
       setDragOverTarget(null);
       setInsertIndex(null);
+      setInsertionPreview(null);
     } catch (error) {
       console.error('Error handling drop with index:', error);
     }

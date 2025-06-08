@@ -1,12 +1,14 @@
 import React from 'react';
+import { Trash2 } from 'lucide-react';
 import { MatrixSummary } from '../../types';
 
 interface MatrixCardProps {
   matrix: MatrixSummary;
   onOpen: () => void;
+  onDelete: () => void;
 }
 
-export const MatrixCard: React.FC<MatrixCardProps> = ({ matrix, onOpen }) => {
+export const MatrixCard: React.FC<MatrixCardProps> = ({ matrix, onOpen, onDelete }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -29,14 +31,28 @@ export const MatrixCard: React.FC<MatrixCardProps> = ({ matrix, onOpen }) => {
     return formatDate(dateString);
   };
 
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    onDelete();
+  };
+
   return (
     <div 
       onClick={onOpen}
-      className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer p-6 min-h-[200px] flex flex-col"
+      className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer p-6 min-h-[200px] flex flex-col relative group"
     >
+      {/* Delete button */}
+      <button
+        onClick={handleDeleteClick}
+        className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 hover:opacity-100"
+        title="Delete matrix"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+
       {/* Header */}
       <div className="mb-4">
-        <h3 className="text-xl font-semibold text-gray-900 mb-1">{matrix.name}</h3>
+        <h3 className="text-xl font-semibold text-gray-900 mb-1 pr-8">{matrix.name}</h3>
         <p className="text-sm text-gray-500">
           Last modified {getRelativeTime(matrix.lastModified)}
         </p>
