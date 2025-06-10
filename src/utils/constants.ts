@@ -4,43 +4,41 @@ export const QUADRANT_CONFIG: QuadrantConfigs = {
   doFirst: {
     title: 'DO FIRST',
     subtitle: 'Urgent & Important',
-    bgColor: 'bg-red-50',
-    borderColor: 'border-red-300',
-    hoverBg: 'hover:bg-red-100',
-    dragOverBg: 'bg-red-100',
+    bgColor: 'bg-gradient-to-b from-red-50/80 to-white',
+    borderColor: 'border-red-100',
+    hoverBg: 'hover:bg-red-50',
+    dragOverBg: 'bg-red-50',
     emptyIcon: '💪',
     emptyText: 'Drop urgent & important tasks here'
   },
   schedule: {
     title: 'SCHEDULE',
     subtitle: 'Not Urgent & Important',
-    bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-300',
-    hoverBg: 'hover:bg-blue-100',
-    dragOverBg: 'bg-blue-100',
+    bgColor: 'bg-gradient-to-b from-blue-50/80 to-white',
+    borderColor: 'border-blue-100',
+    hoverBg: 'hover:bg-blue-50',
+    dragOverBg: 'bg-blue-50',
     emptyIcon: '📅',
     emptyText: 'Drop important but not urgent tasks here'
   },
   delegate: {
     title: 'DELEGATE',
     subtitle: 'Urgent & Not Important',
-    bgColor: 'bg-yellow-50',
-    borderColor: 'border-yellow-300',
-    hoverBg: 'hover:bg-yellow-100',
-    dragOverBg: 'bg-yellow-100',
+    bgColor: 'bg-gradient-to-b from-yellow-50/80 to-white',
+    borderColor: 'border-yellow-100',
+    hoverBg: 'hover:bg-yellow-50',
+    dragOverBg: 'bg-yellow-50',
     emptyIcon: '🤝',
     emptyText: 'Drop tasks others could handle'
   },
   eliminate: {
     title: 'ELIMINATE',
     subtitle: 'Not Urgent & Not Important',
-    bgColor: 'bg-gray-50',
-    borderColor: 'border-gray-300',
-    hoverBg: 'hover:bg-gray-100',
-    dragOverBg: 'bg-gray-100',
+    bgColor: 'bg-gradient-to-b from-gray-50/80 to-white',
+    borderColor: 'border-gray-100',
+    hoverBg: 'hover:bg-gray-50',
+    dragOverBg: 'bg-gray-50',
     emptyIcon: '🚫',
     emptyText: 'Drop tasks to reconsider'
   }
 };
-
-export const STORAGE_KEY = 'focusmatrix_tasks'; 

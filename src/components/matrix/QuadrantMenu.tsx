@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MoreHorizontal, ArrowRight, Trash2, Plus } from 'lucide-react';
+import { MoreHorizontal, ArrowRight, Trash2, Plus, Move, Undo } from 'lucide-react';
 import { QuadrantKey } from '../../types';
 import { useMatrixStore } from '../../store/useMatrixStore';
+import { useTaskStore } from '../../store/useTaskStore';
 import { QUADRANT_CONFIG } from '../../utils/constants';
 
 interface QuadrantMenuProps {
@@ -19,13 +20,16 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showMoveSubmenu, setShowMoveSubmenu] = useState(false);
+  const [showMoveQuadrantSubmenu, setShowMoveQuadrantSubmenu] = useState(false);
   const [submenuPosition, setSubmenuPosition] = useState<'right' | 'left'>('right');
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const submenuRef = useRef<HTMLDivElement>(null);
+  const quadrantSubmenuRef = useRef<HTMLDivElement>(null);
   const hideTimeoutRef = useRef<number | null>(null);
   
   const { getMatrixSummaries, getCurrentMatrix } = useMatrixStore();
+  const { moveAllTasksBetweenQuadrants, undoLastMoveAll } = useTaskStore();
   
   const matrices = getMatrixSummaries();
   const currentMatrix = getCurrentMatrix();
@@ -33,12 +37,16 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
   // Filter out current matrix from move options
   const otherMatrices = matrices.filter(m => m.id !== currentMatrix?.id);
 
+  // Get other quadrants for internal moves
+  const otherQuadrants = (['unassigned', 'doFirst', 'schedule', 'delegate', 'eliminate'] as const)
+    .filter(q => q !== quadrantKey);
+
   // Calculate submenu position to keep it on screen
   useEffect(() => {
-    if (showMoveSubmenu && menuRef.current) {
+    if ((showMoveSubmenu || showMoveQuadrantSubmenu) && menuRef.current) {
       const menuRect = menuRef.current.getBoundingClientRect();
       const screenWidth = window.innerWidth;
-      const submenuWidth = 220; // min-w-[220px]
+      const submenuWidth = 250; // Updated to match new width
       
       // Check if submenu would go off the right edge
       if (menuRect.right + submenuWidth > screenWidth - 20) {
@@ -47,13 +55,14 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
         setSubmenuPosition('right');
       }
     }
-  }, [showMoveSubmenu]);
+  }, [showMoveSubmenu, showMoveQuadrantSubmenu]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node) &&
           buttonRef.current && !buttonRef.current.contains(event.target as Node) &&
-          (!submenuRef.current || !submenuRef.current.contains(event.target as Node))) {
+          (!submenuRef.current || !submenuRef.current.contains(event.target as Node)) &&
+          (!quadrantSubmenuRef.current || !quadrantSubmenuRef.current.contains(event.target as Node))) {
         
         // Clear any pending timeout when clicking outside
         if (hideTimeoutRef.current) {
@@ -63,6 +72,7 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
         
         setIsOpen(false);
         setShowMoveSubmenu(false);
+        setShowMoveQuadrantSubmenu(false);
       }
     };
 
@@ -76,6 +86,7 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
         
         setIsOpen(false);
         setShowMoveSubmenu(false);
+        setShowMoveQuadrantSubmenu(false);
       }
     };
 
@@ -96,6 +107,7 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
       clearTimeout(hideTimeoutRef.current);
       hideTimeoutRef.current = null;
       setShowMoveSubmenu(false);
+      setShowMoveQuadrantSubmenu(false);
     }
   }, [isOpen]);
 
@@ -109,7 +121,8 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
     };
   }, []);
 
-  const getQuadrantDisplayName = (key: QuadrantKey): string => {
+  const getQuadrantDisplayName = (key: QuadrantKey | 'unassigned'): string => {
+    if (key === 'unassigned') return 'Unassigned';
     return QUADRANT_CONFIG[key].title;
   };
 
@@ -124,6 +137,14 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
     e.stopPropagation();
     clearHideTimeout();
     setShowMoveSubmenu(!showMoveSubmenu);
+    setShowMoveQuadrantSubmenu(false);
+  };
+
+  const handleMoveQuadrantClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    clearHideTimeout();
+    setShowMoveQuadrantSubmenu(!showMoveQuadrantSubmenu);
+    setShowMoveSubmenu(false);
   };
 
   const handleMoveHover = () => {
@@ -132,6 +153,17 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
     // Show submenu on hover only if not already shown
     if (!showMoveSubmenu) {
       setShowMoveSubmenu(true);
+      setShowMoveQuadrantSubmenu(false);
+    }
+  };
+
+  const handleMoveQuadrantHover = () => {
+    clearHideTimeout();
+    
+    // Show submenu on hover only if not already shown
+    if (!showMoveQuadrantSubmenu) {
+      setShowMoveQuadrantSubmenu(true);
+      setShowMoveSubmenu(false);
     }
   };
 
@@ -141,6 +173,7 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
     // Schedule hiding with a delay
     hideTimeoutRef.current = window.setTimeout(() => {
       setShowMoveSubmenu(false);
+      setShowMoveQuadrantSubmenu(false);
       hideTimeoutRef.current = null;
     }, 300); // 300ms delay
   };
@@ -161,6 +194,35 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
     clearHideTimeout();
     setIsOpen(false);
     setShowMoveSubmenu(false);
+    setShowMoveQuadrantSubmenu(false);
+  };
+
+  const handleMoveAllToQuadrant = (targetQuadrant: QuadrantKey | 'unassigned') => {
+    const result = moveAllTasksBetweenQuadrants(quadrantKey, targetQuadrant);
+    
+    if (result.success) {
+      // Show success message or toast
+      console.log(`Successfully moved ${result.movedCount} tasks from ${quadrantKey} to ${targetQuadrant}`);
+    } else {
+      // Show error message
+      console.error(`Failed to move tasks: ${result.error}`);
+      alert(`Failed to move tasks: ${result.error}`);
+    }
+    
+    closeAllMenus();
+  };
+
+  const handleUndoLastMove = () => {
+    const success = undoLastMoveAll();
+    
+    if (success) {
+      console.log('Successfully undid last move operation');
+    } else {
+      console.log('No move operation to undo or undo failed');
+      alert('No recent move operation to undo');
+    }
+    
+    closeAllMenus();
   };
 
   return (
@@ -177,9 +239,9 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
       {isOpen && (
         <div
           ref={menuRef}
-          className="absolute top-8 right-0 z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[200px]"
+          className="absolute top-8 right-0 z-[10000] bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[230px]"
         >
-          {/* Move All Tasks */}
+          {/* Move All Tasks to Matrix */}
           <div 
             className="relative"
             onMouseEnter={handleMoveHover}
@@ -193,11 +255,11 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
               <span className="flex-1">Move all to matrix →</span>
             </button>
 
-            {/* Move Submenu */}
+            {/* Move to Matrix Submenu */}
             {showMoveSubmenu && (
               <div
                 ref={submenuRef}
-                className={`absolute top-0 z-[10000] bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[220px] ${
+                className={`absolute top-0 z-[10001] bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[250px] ${
                   submenuPosition === 'right' 
                     ? 'left-full ml-1' 
                     : 'right-full mr-1'
@@ -249,6 +311,61 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
             )}
           </div>
 
+          {/* Move All Tasks to Quadrant */}
+          <div 
+            className="relative"
+            onMouseEnter={handleMoveQuadrantHover}
+            onMouseLeave={handleMoveLeave}
+          >
+            <button
+              className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+              onClick={handleMoveQuadrantClick}
+            >
+              <Move className="w-4 h-4" />
+              <span className="flex-1">Move all to quadrant →</span>
+            </button>
+
+            {/* Move to Quadrant Submenu */}
+            {showMoveQuadrantSubmenu && (
+              <div
+                ref={quadrantSubmenuRef}
+                className={`absolute top-0 z-[10001] bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[250px] ${
+                  submenuPosition === 'right' 
+                    ? 'left-full ml-1' 
+                    : 'right-full mr-1'
+                }`}
+                onMouseEnter={handleSubmenuEnter}
+                onMouseLeave={handleSubmenuLeave}
+              >
+                {otherQuadrants.map((targetQuadrant) => (
+                  <button
+                    key={targetQuadrant}
+                    onClick={() => handleMoveAllToQuadrant(targetQuadrant)}
+                    className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">{getQuadrantDisplayName(targetQuadrant)}</div>
+                      <div className="text-xs text-gray-500">
+                        Move all tasks to this quadrant
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-gray-200 my-1" />
+
+          {/* Undo Last Move */}
+          <button
+            onClick={handleUndoLastMove}
+            className="w-full flex items-center gap-3 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+          >
+            <Undo className="w-4 h-4" />
+            <span className="flex-1">Undo last move</span>
+          </button>
+
           <div className="border-t border-gray-200 my-1" />
 
           {/* Clear Completed */}
@@ -266,4 +383,4 @@ export const QuadrantMenu: React.FC<QuadrantMenuProps> = ({
       )}
     </div>
   );
-}; 
+};

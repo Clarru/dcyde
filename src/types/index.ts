@@ -3,7 +3,12 @@ export interface Task {
   title: string;
   completed: boolean;
   createdAt: Date;
+  status?: TaskStatus;
+  notes?: string;
+  notesLastModified?: Date;
 }
+
+export type TaskStatus = 'backlog' | 'todo' | 'in-progress' | 'in-review' | 'done' | 'blocked' | 'canceled';
 
 export interface TaskState {
   unassigned: Task[];
@@ -59,4 +64,4 @@ export interface MatrixSummary {
     eliminate: number;
   };
   totalTasks: number;
-} 
+}

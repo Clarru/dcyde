@@ -7,3 +7,268 @@
     font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   }
 }
+
+@layer components {
+  /* Enhanced Drag Shadow Effect - Reduced Intensity */
+  .drag-shadow-enhanced {
+    box-shadow: 
+      0 12px 24px rgba(0, 0, 0, 0.25),
+      0 6px 12px rgba(0, 0, 0, 0.15),
+      0 3px 6px rgba(0, 0, 0, 0.1);
+    transform: scale(1.03) rotate(0.5deg);
+    z-index: 1000;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Alternative 1: Subtle Scaling with Soft Shadow */
+  .drag-effect-subtle {
+    transform: scale(1.02);
+    box-shadow: 
+      0 8px 16px rgba(0, 0, 0, 0.2),
+      0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.15s ease-out;
+    z-index: 999;
+  }
+
+  /* Alternative 2: Pulsing Glow Effect */
+  .drag-effect-glow {
+    transform: scale(1.03);
+    box-shadow: 
+      0 0 0 2px rgba(59, 130, 246, 0.2),
+      0 0 15px rgba(59, 130, 246, 0.15),
+      0 12px 24px rgba(0, 0, 0, 0.2);
+    animation: pulse-glow 1.5s ease-in-out infinite;
+    z-index: 998;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 
+        0 0 0 2px rgba(59, 130, 246, 0.2),
+        0 0 15px rgba(59, 130, 246, 0.15),
+        0 12px 24px rgba(0, 0, 0, 0.2);
+    }
+    50% {
+      box-shadow: 
+        0 0 0 4px rgba(59, 130, 246, 0.3),
+        0 0 25px rgba(59, 130, 246, 0.25),
+        0 16px 32px rgba(0, 0, 0, 0.25);
+    }
+  }
+
+  /* Alternative 3: Dotted Outline with Movement Trail */
+  .drag-effect-dotted {
+    transform: scale(1.02);
+    box-shadow: 
+      0 10px 20px rgba(0, 0, 0, 0.2),
+      0 4px 8px rgba(0, 0, 0, 0.1);
+    outline: 2px dotted rgba(99, 102, 241, 0.5);
+    outline-offset: 3px;
+    position: relative;
+    z-index: 997;
+  }
+
+  .drag-effect-dotted::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    border: 2px dotted rgba(99, 102, 241, 0.3);
+    border-radius: inherit;
+    animation: dotted-rotate 2s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes dotted-rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Drop Indicator - Only the blinking line */
+  @keyframes dropIndicatorPulse {
+    0%, 100% {
+      opacity: 0.8;
+      transform: scaleY(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scaleY(1.1);
+    }
+  }
+
+  /* Drop Indicator Styles - Only Line */
+  .drop-indicator {
+    position: absolute;
+    z-index: 50;
+    pointer-events: none;
+    border-radius: 2px;
+  }
+
+  .drop-indicator-line {
+    background: linear-gradient(90deg, 
+      rgba(59, 130, 246, 0.9) 0%, 
+      rgba(59, 130, 246, 1) 50%, 
+      rgba(59, 130, 246, 0.9) 100%
+    );
+    width: 3px;
+    height: 32px;
+    animation: dropIndicatorPulse 1.5s ease-in-out infinite;
+    box-shadow: 
+      0 0 8px rgba(59, 130, 246, 0.4),
+      0 0 16px rgba(59, 130, 246, 0.2);
+  }
+
+  /* Improved Draggable Divider Styles */
+  .draggable-divider {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    position: relative;
+    z-index: 10;
+  }
+
+  .draggable-divider:active {
+    cursor: row-resize !important;
+  }
+
+  /* Smooth state transitions for divider */
+  .divider-hidden {
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(209, 213, 219, 0.6) 50%, transparent 100%);
+    cursor: default;
+    border: none;
+  }
+
+  .divider-visible {
+    height: 12px;
+    background: linear-gradient(180deg, rgba(229, 231, 235, 0.9) 0%, rgba(209, 213, 219, 1) 50%, rgba(229, 231, 235, 0.9) 100%);
+    cursor: row-resize;
+    border-top: 1px solid rgba(209, 213, 219, 0.8);
+    border-bottom: 1px solid rgba(209, 213, 219, 0.8);
+  }
+
+  .divider-dragging {
+    height: 12px;
+    background: linear-gradient(180deg, rgba(147, 197, 253, 0.9) 0%, rgba(59, 130, 246, 1) 50%, rgba(147, 197, 253, 0.9) 100%);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    border-top: 1px solid rgba(59, 130, 246, 0.6);
+    border-bottom: 1px solid rgba(59, 130, 246, 0.6);
+  }
+
+  /* Prevent text selection during drag */
+  .dragging * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+  }
+
+  /* Accessibility: Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    .drag-shadow-enhanced,
+    .drag-effect-subtle,
+    .drag-effect-glow,
+    .drag-effect-dotted,
+    .drop-indicator-line,
+    .draggable-divider {
+      animation: none;
+      transition: height 0.1s ease, background 0.1s ease, border 0.1s ease;
+    }
+    
+    .drag-effect-glow {
+      box-shadow: 
+        0 0 0 2px rgba(59, 130, 246, 0.2),
+        0 12px 24px rgba(0, 0, 0, 0.2);
+    }
+    
+    .drag-effect-dotted::before {
+      animation: none;
+    }
+
+    .drop-indicator-line {
+      opacity: 0.9;
+      animation: none;
+    }
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .drag-shadow-enhanced {
+      box-shadow: 
+        0 12px 24px rgba(0, 0, 0, 0.6),
+        0 6px 12px rgba(0, 0, 0, 0.4);
+    }
+    
+    .drag-effect-glow {
+      box-shadow: 
+        0 0 0 2px rgba(0, 0, 0, 0.8),
+        0 12px 24px rgba(0, 0, 0, 0.6);
+    }
+    
+    .drag-effect-dotted {
+      outline-color: rgba(0, 0, 0, 0.8);
+    }
+
+    .drop-indicator-line {
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid rgba(255, 255, 255, 1);
+    }
+
+    .divider-visible {
+      border-color: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .divider-dragging {
+      border-color: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.2);
+    }
+  }
+
+  /* Smooth scrolling for resizable sections */
+  .resizable-section {
+    scroll-behavior: smooth;
+  }
+
+  .resizable-section::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .resizable-section::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 3px;
+  }
+
+  .resizable-section::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+
+  .resizable-section::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+
+  /* Performance optimizations */
+  .draggable-divider,
+  .resizable-section {
+    will-change: transform, height;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+  }
+
+  /* Smooth transitions for all interactive elements */
+  .transition-smooth {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-smooth-fast {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}

@@ -1,13 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Matrix, MatrixSummary, TaskState } from '../types';
+import { useTaskStore } from './useTaskStore';
 
 interface MatrixStore {
   matrices: Matrix[];
   currentMatrixId: string | null;
   
-  // Actions
-  migrateFromTaskStore: (taskData: any) => string;
+  migrateFromTaskStore: (taskData: TaskState) => string;
   createMatrix: (name: string) => string;
   deleteMatrix: (matrixId: string) => void;
   updateMatrix: (matrixId: string, updates: Partial<Matrix>) => void;
@@ -17,6 +17,7 @@ interface MatrixStore {
   updateMatrixTasks: (matrixId: string, tasks: TaskState) => void;
   moveTaskToMatrix: (taskId: number, fromMatrixId: string, fromQuadrant: keyof TaskState, toMatrixId: string, toQuadrant?: keyof TaskState) => boolean;
   moveAllTasksToMatrix: (fromMatrixId: string, fromQuadrant: keyof TaskState, toMatrixId: string, toQuadrant?: keyof TaskState) => number;
+  clearAllTasks: () => void;
 }
 
 export const useMatrixStore = create<MatrixStore>()(
@@ -25,34 +26,35 @@ export const useMatrixStore = create<MatrixStore>()(
       matrices: [],
       currentMatrixId: null,
 
-      // Migration helper - create matrix from existing task store data
-      migrateFromTaskStore: (taskData: any) => {
+      migrateFromTaskStore: (taskData: TaskState) => {
+        // Only migrate if there are actually tasks to migrate
+        const totalTasks = Object.values(taskData).reduce((sum, tasks) => sum + tasks.length, 0);
+        if (totalTasks === 0) {
+          console.log('No tasks to migrate, skipping migration');
+          return '';
+        }
+
         const now = new Date().toISOString();
-        const migratedMatrix: Matrix = {
+        const matrix: Matrix = {
           id: `matrix_${Date.now()}`,
           name: 'Migrated Matrix',
           created: now,
           lastModified: now,
-          tasks: {
-            unassigned: taskData.unassigned || [],
-            doFirst: taskData.doFirst || [],
-            schedule: taskData.schedule || [],
-            delegate: taskData.delegate || [],
-            eliminate: taskData.eliminate || []
-          }
+          tasks: taskData
         };
 
         set((state) => ({
-          matrices: [migratedMatrix, ...state.matrices],
-          currentMatrixId: migratedMatrix.id
+          matrices: [matrix, ...state.matrices],
+          currentMatrixId: matrix.id
         }));
 
-        return migratedMatrix.id;
+        console.log(`Migrated ${totalTasks} tasks to new matrix`);
+        return matrix.id;
       },
 
       createMatrix: (name: string) => {
         const now = new Date().toISOString();
-        const newMatrix: Matrix = {
+        const matrix: Matrix = {
           id: `matrix_${Date.now()}`,
           name: name.trim() || 'Untitled Matrix',
           created: now,
@@ -67,29 +69,39 @@ export const useMatrixStore = create<MatrixStore>()(
         };
 
         set((state) => ({
-          matrices: [...state.matrices, newMatrix],
-          currentMatrixId: newMatrix.id
+          matrices: [...state.matrices, matrix],
+          currentMatrixId: matrix.id
         }));
 
-        return newMatrix.id;
+        return matrix.id;
       },
 
       deleteMatrix: (matrixId: string) => {
+        const state = get();
+        const matrixToDelete = state.matrices.find(m => m.id === matrixId);
+        
+        if (!matrixToDelete) return;
+
+        // If this is the current matrix being deleted, clear the global task store
+        if (state.currentMatrixId === matrixId) {
+          // Clear all tasks from the global task store to prevent re-migration
+          const { clearAllTasks } = get();
+          clearAllTasks();
+        }
+
         set((state) => ({
           matrices: state.matrices.filter(m => m.id !== matrixId),
           currentMatrixId: state.currentMatrixId === matrixId ? null : state.currentMatrixId
         }));
+
+        console.log(`Deleted matrix: ${matrixToDelete.name}`);
       },
 
       updateMatrix: (matrixId: string, updates: Partial<Matrix>) => {
         set((state) => ({
           matrices: state.matrices.map(matrix =>
             matrix.id === matrixId
-              ? { 
-                  ...matrix, 
-                  ...updates, 
-                  lastModified: new Date().toISOString() 
-                }
+              ? { ...matrix, ...updates, lastModified: new Date().toISOString() }
               : matrix
           )
         }));
@@ -105,8 +117,7 @@ export const useMatrixStore = create<MatrixStore>()(
       },
 
       getMatrixSummaries: () => {
-        const state = get();
-        return state.matrices.map(matrix => {
+        return get().matrices.map(matrix => {
           const taskCounts = {
             doFirst: matrix.tasks.doFirst.length,
             schedule: matrix.tasks.schedule.length,
@@ -129,11 +140,7 @@ export const useMatrixStore = create<MatrixStore>()(
         set((state) => ({
           matrices: state.matrices.map(matrix =>
             matrix.id === matrixId
-              ? { 
-                  ...matrix, 
-                  tasks,
-                  lastModified: new Date().toISOString() 
-                }
+              ? { ...matrix, tasks, lastModified: new Date().toISOString() }
               : matrix
           )
         }));
@@ -150,27 +157,29 @@ export const useMatrixStore = create<MatrixStore>()(
         if (!task) return false;
         
         const targetQuadrant = toQuadrant || fromQuadrant;
+        const now = new Date().toISOString();
         
-        // Remove from source matrix
-        const updatedFromTasks = {
-          ...fromMatrix.tasks,
-          [fromQuadrant]: fromMatrix.tasks[fromQuadrant].filter(t => t.id !== taskId)
-        };
-        
-        // Add to target matrix
-        const updatedToTasks = {
-          ...toMatrix.tasks,
-          [targetQuadrant]: [...toMatrix.tasks[targetQuadrant], task]
-        };
-        
-        // Update both matrices
         set((state) => ({
           matrices: state.matrices.map(matrix => {
             if (matrix.id === fromMatrixId) {
-              return { ...matrix, tasks: updatedFromTasks, lastModified: new Date().toISOString() };
+              return {
+                ...matrix,
+                tasks: {
+                  ...matrix.tasks,
+                  [fromQuadrant]: matrix.tasks[fromQuadrant].filter(t => t.id !== taskId)
+                },
+                lastModified: now
+              };
             }
             if (matrix.id === toMatrixId) {
-              return { ...matrix, tasks: updatedToTasks, lastModified: new Date().toISOString() };
+              return {
+                ...matrix,
+                tasks: {
+                  ...matrix.tasks,
+                  [targetQuadrant]: [...matrix.tasks[targetQuadrant], task]
+                },
+                lastModified: now
+              };
             }
             return matrix;
           })
@@ -190,94 +199,51 @@ export const useMatrixStore = create<MatrixStore>()(
         if (tasksToMove.length === 0) return 0;
         
         const targetQuadrant = toQuadrant || fromQuadrant;
+        const now = new Date().toISOString();
         
-        // Remove all tasks from source matrix
-        const updatedFromTasks = {
-          ...fromMatrix.tasks,
-          [fromQuadrant]: []
-        };
-        
-        // Add all tasks to target matrix
-        const updatedToTasks = {
-          ...toMatrix.tasks,
-          [targetQuadrant]: [...toMatrix.tasks[targetQuadrant], ...tasksToMove]
-        };
-        
-        // Update both matrices
         set((state) => ({
           matrices: state.matrices.map(matrix => {
             if (matrix.id === fromMatrixId) {
-              return { ...matrix, tasks: updatedFromTasks, lastModified: new Date().toISOString() };
+              return {
+                ...matrix,
+                tasks: { ...matrix.tasks, [fromQuadrant]: [] },
+                lastModified: now
+              };
             }
             if (matrix.id === toMatrixId) {
-              return { ...matrix, tasks: updatedToTasks, lastModified: new Date().toISOString() };
+              return {
+                ...matrix,
+                tasks: {
+                  ...matrix.tasks,
+                  [targetQuadrant]: [...matrix.tasks[targetQuadrant], ...tasksToMove]
+                },
+                lastModified: now
+              };
             }
             return matrix;
           })
         }));
         
         return tasksToMove.length;
+      },
+
+      // Clear all tasks from global task store
+      clearAllTasks: () => {
+        useTaskStore.setState({
+          unassigned: [],
+          doFirst: [],
+          schedule: [],
+          delegate: [],
+          eliminate: []
+        });
       }
     }),
     {
       name: 'dcyde-matrices',
       partialize: (state) => ({
-        matrices: state.matrices.map(matrix => ({
-          ...matrix,
-          tasks: {
-            unassigned: matrix.tasks.unassigned.map(task => ({
-              ...task,
-              createdAt: task.createdAt.toISOString()
-            })),
-            doFirst: matrix.tasks.doFirst.map(task => ({
-              ...task,
-              createdAt: task.createdAt.toISOString()
-            })),
-            schedule: matrix.tasks.schedule.map(task => ({
-              ...task,
-              createdAt: task.createdAt.toISOString()
-            })),
-            delegate: matrix.tasks.delegate.map(task => ({
-              ...task,
-              createdAt: task.createdAt.toISOString()
-            })),
-            eliminate: matrix.tasks.eliminate.map(task => ({
-              ...task,
-              createdAt: task.createdAt.toISOString()
-            }))
-          }
-        })),
+        matrices: state.matrices,
         currentMatrixId: state.currentMatrixId
-      }),
-      merge: (persistedState: any, currentState) => ({
-        ...currentState,
-        matrices: persistedState?.matrices?.map((matrix: any) => ({
-          ...matrix,
-          tasks: {
-            unassigned: matrix.tasks?.unassigned?.map((task: any) => ({
-              ...task,
-              createdAt: new Date(task.createdAt)
-            })) || [],
-            doFirst: matrix.tasks?.doFirst?.map((task: any) => ({
-              ...task,
-              createdAt: new Date(task.createdAt)
-            })) || [],
-            schedule: matrix.tasks?.schedule?.map((task: any) => ({
-              ...task,
-              createdAt: new Date(task.createdAt)
-            })) || [],
-            delegate: matrix.tasks?.delegate?.map((task: any) => ({
-              ...task,
-              createdAt: new Date(task.createdAt)
-            })) || [],
-            eliminate: matrix.tasks?.eliminate?.map((task: any) => ({
-              ...task,
-              createdAt: new Date(task.createdAt)
-            })) || []
-          }
-        })) || [],
-        currentMatrixId: persistedState?.currentMatrixId || null
       })
     }
   )
-); 
+);

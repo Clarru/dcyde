@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
-import { QuadrantKey, QuadrantConfig, TaskState } from '../../types';
+import { QuadrantKey, QuadrantConfig, TaskState, Task } from '../../types';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useMatrixStore } from '../../store/useMatrixStore';
 import { TaskCard } from '../task/TaskCard';
@@ -30,6 +30,7 @@ interface QuadrantProps {
   onTaskMoved?: (taskTitle: string, targetMatrixName: string) => void;
   onCreateNewMatrix?: (quadrant: QuadrantKey) => void;
   onBulkTasksMoved?: (count: number, targetMatrixName: string) => void;
+  onOpenStatusPanel?: (task: Task) => void;
 }
 
 export const Quadrant: React.FC<QuadrantProps> = ({
@@ -46,7 +47,8 @@ export const Quadrant: React.FC<QuadrantProps> = ({
   onSetInsertionPreview,
   onTaskMoved,
   onCreateNewMatrix,
-  onBulkTasksMoved
+  onBulkTasksMoved,
+  onOpenStatusPanel
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tasks = useTaskStore(state => state[quadrantKey]);
@@ -88,97 +90,97 @@ export const Quadrant: React.FC<QuadrantProps> = ({
       const taskElements = Array.from(containerRef.current.querySelectorAll('[data-task-id]'));
       const insertIndex = calculateInsertIndex(e.clientX, e.clientY, taskElements);
       
-             // Calculate position for visual indicator using 2D-aware positioning
-       let indicatorY = 0;
-       let indicatorX = 0;
-       
-       const containerRect = containerRef.current.getBoundingClientRect();
-       
-       if (taskElements.length === 0) {
-         // Empty quadrant - show at top of content area
-         const contentArea = containerRef.current.querySelector('.flex.flex-wrap');
-         if (contentArea) {
-           const contentRect = contentArea.getBoundingClientRect();
-           indicatorY = contentRect.top - containerRect.top;
-           indicatorX = contentRect.left - containerRect.left;
-         }
-       } else {
-         // Use the smart 2D positioning
-         const mouseX = e.clientX;
-         const mouseY = e.clientY;
-         
-         // Group tasks by rows for positioning
-         const rows: { elements: Element[], top: number }[] = [];
-         
-         taskElements.forEach((element) => {
-           const rect = element.getBoundingClientRect();
-           let targetRow = rows.find(row => Math.abs(row.top - rect.top) < 10);
-           
-           if (!targetRow) {
-             targetRow = { elements: [], top: rect.top };
-             rows.push(targetRow);
-           }
-           targetRow.elements.push(element);
-         });
-         
-         rows.sort((a, b) => a.top - b.top);
-         
-         // Find target row
-         let targetRowIndex = 0;
-         for (let i = 0; i < rows.length; i++) {
-           const rowBottom = rows[i].top + 32; // Approximate task height
-           if (mouseY <= rowBottom) {
-             targetRowIndex = i;
-             break;
-           }
-           targetRowIndex = i + 1;
-         }
-         
-         if (targetRowIndex < rows.length) {
-           // Within a row - find horizontal position
-           const targetRow = rows[targetRowIndex];
-           targetRow.elements.sort((a, b) => {
-             const aRect = a.getBoundingClientRect();
-             const bRect = b.getBoundingClientRect();
-             return aRect.left - bRect.left;
-           });
-           
-           // Find insertion point in row
-           let insertInRow = 0;
-           for (let i = 0; i < targetRow.elements.length; i++) {
-             const elementRect = targetRow.elements[i].getBoundingClientRect();
-             if (mouseX < elementRect.left + elementRect.width / 2) {
-               insertInRow = i;
-               break;
-             }
-             insertInRow = i + 1;
-           }
-           
-           if (insertInRow === 0) {
-             // Before first in row
-             const firstRect = targetRow.elements[0].getBoundingClientRect();
-             indicatorX = firstRect.left - containerRect.left;
-             indicatorY = firstRect.top - containerRect.top;
-           } else if (insertInRow >= targetRow.elements.length) {
-             // After last in row
-             const lastRect = targetRow.elements[targetRow.elements.length - 1].getBoundingClientRect();
-             indicatorX = lastRect.right - containerRect.left;
-             indicatorY = lastRect.top - containerRect.top;
-           } else {
-             // Between elements in row
-             const targetRect = targetRow.elements[insertInRow].getBoundingClientRect();
-             indicatorX = targetRect.left - containerRect.left;
-             indicatorY = targetRect.top - containerRect.top;
-           }
-         } else {
-           // After all rows
-           const lastRow = rows[rows.length - 1];
-           const lastElement = lastRow.elements[lastRow.elements.length - 1];
-           const lastRect = lastElement.getBoundingClientRect();
-           indicatorX = lastRect.left - containerRect.left;
-           indicatorY = lastRect.bottom - containerRect.top + 8; // Small gap
-         }
-       }
+      // Calculate position for visual indicator using 2D-aware positioning
+      let indicatorY = 0;
+      let indicatorX = 0;
+      
+      const containerRect = containerRef.current.getBoundingClientRect();
+      
+      if (taskElements.length === 0) {
+        // Empty quadrant - show at top of content area
+        const contentArea = containerRef.current.querySelector('.flex.flex-wrap');
+        if (contentArea) {
+          const contentRect = contentArea.getBoundingClientRect();
+          indicatorY = contentRect.top - containerRect.top;
+          indicatorX = contentRect.left - containerRect.left;
+        }
+      } else {
+        // Use the smart 2D positioning
+        const mouseX = e.clientX;
+        const mouseY = e.clientY;
+        
+        // Group tasks by rows for positioning
+        const rows: { elements: Element[], top: number }[] = [];
+        
+        taskElements.forEach((element) => {
+          const rect = element.getBoundingClientRect();
+          let targetRow = rows.find(row => Math.abs(row.top - rect.top) < 10);
+          
+          if (!targetRow) {
+            targetRow = { elements: [], top: rect.top };
+            rows.push(targetRow);
+          }
+          targetRow.elements.push(element);
+        });
+        
+        rows.sort((a, b) => a.top - b.top);
+        
+        // Find target row
+        let targetRowIndex = 0;
+        for (let i = 0; i < rows.length; i++) {
+          const rowBottom = rows[i].top + 32; // Approximate task height
+          if (mouseY <= rowBottom) {
+            targetRowIndex = i;
+            break;
+          }
+          targetRowIndex = i + 1;
+        }
+        
+        if (targetRowIndex < rows.length) {
+          // Within a row - find horizontal position
+          const targetRow = rows[targetRowIndex];
+          targetRow.elements.sort((a, b) => {
+            const aRect = a.getBoundingClientRect();
+            const bRect = b.getBoundingClientRect();
+            return aRect.left - bRect.left;
+          });
+          
+          // Find insertion point in row
+          let insertInRow = 0;
+          for (let i = 0; i < targetRow.elements.length; i++) {
+            const elementRect = targetRow.elements[i].getBoundingClientRect();
+            if (mouseX < elementRect.left + elementRect.width / 2) {
+              insertInRow = i;
+              break;
+            }
+            insertInRow = i + 1;
+          }
+          
+          if (insertInRow === 0) {
+            // Before first in row
+            const firstRect = targetRow.elements[0].getBoundingClientRect();
+            indicatorX = firstRect.left - containerRect.left;
+            indicatorY = firstRect.top - containerRect.top;
+          } else if (insertInRow >= targetRow.elements.length) {
+            // After last in row
+            const lastRect = targetRow.elements[targetRow.elements.length - 1].getBoundingClientRect();
+            indicatorX = lastRect.right - containerRect.left;
+            indicatorY = lastRect.top - containerRect.top;
+          } else {
+            // Between elements in row
+            const targetRect = targetRow.elements[insertInRow].getBoundingClientRect();
+            indicatorX = targetRect.left - containerRect.left;
+            indicatorY = targetRect.top - containerRect.top;
+          }
+        } else {
+          // After all rows
+          const lastRow = rows[rows.length - 1];
+          const lastElement = lastRow.elements[lastRow.elements.length - 1];
+          const lastRect = lastElement.getBoundingClientRect();
+          indicatorX = lastRect.left - containerRect.left;
+          indicatorY = lastRect.bottom - containerRect.top + 8; // Small gap
+        }
+      }
       
       onSetInsertionPreview({
         quadrant: quadrantKey,
@@ -289,15 +291,15 @@ export const Quadrant: React.FC<QuadrantProps> = ({
       const dragData = e.dataTransfer.getData('text/plain');
       const { taskId, sourceQuadrant } = JSON.parse(dragData);
       
-             // Calculate insertion index if we have container and task elements
-       let insertIndex: number | undefined = undefined;
-       if (containerRef.current) {
-         const taskElements = Array.from(containerRef.current.querySelectorAll('[data-task-id]'));
-         if (taskElements.length > 0) {
-           insertIndex = calculateInsertIndex(e.clientX, e.clientY, taskElements);
-           console.log('📍 Calculated insert index:', insertIndex);
-         }
-       }
+      // Calculate insertion index if we have container and task elements
+      let insertIndex: number | undefined = undefined;
+      if (containerRef.current) {
+        const taskElements = Array.from(containerRef.current.querySelectorAll('[data-task-id]'));
+        if (taskElements.length > 0) {
+          insertIndex = calculateInsertIndex(e.clientX, e.clientY, taskElements);
+          console.log('📍 Calculated insert index:', insertIndex);
+        }
+      }
       
       console.log('Moving task:', taskId, 'from:', sourceQuadrant, 'to:', quadrantKey, 'at index:', insertIndex);
       
@@ -315,13 +317,77 @@ export const Quadrant: React.FC<QuadrantProps> = ({
     }
   };
 
+  // Get typography colors based on quadrant
+  const getTitleColor = () => {
+    switch (quadrantKey) {
+      case 'doFirst':
+        return 'text-red-700'; 
+      case 'schedule':
+        return 'text-blue-700'; 
+      case 'delegate':
+        return 'text-yellow-700'; 
+      case 'eliminate':
+        return 'text-gray-700'; 
+      default:
+        return 'text-gray-900';
+    }
+  };
+
+  const getSubtitleColor = () => {
+    switch (quadrantKey) {
+      case 'doFirst':
+        return 'text-red-600'; 
+      case 'schedule':
+        return 'text-blue-600'; 
+      case 'delegate':
+        return 'text-yellow-600'; 
+      case 'eliminate':
+        return 'text-gray-600'; 
+      default:
+        return 'text-gray-600';
+    }
+  };
+
+  // Get drag-over styles based on quadrant
+  const getDragOverStyles = () => {
+    switch (quadrantKey) {
+      case 'doFirst':
+        return 'border-red-400 bg-red-50/50 shadow-lg scale-[1.01]';
+      case 'schedule':
+        return 'border-blue-400 bg-blue-50/50 shadow-lg scale-[1.01]';
+      case 'delegate':
+        return 'border-yellow-400 bg-yellow-50/50 shadow-lg scale-[1.01]';
+      case 'eliminate':
+        return 'border-gray-400 bg-gray-50/50 shadow-lg scale-[1.01]';
+      default:
+        return 'border-blue-400 bg-blue-50/50 shadow-lg scale-[1.01]';
+    }
+  };
+
+  const renderDropIndicator = () => {
+    if (!insertionPreview || insertionPreview.quadrant !== quadrantKey) return null;
+
+    const { x, y } = insertionPreview.position;
+
+    return (
+      <div
+        className="drop-indicator drop-indicator-line"
+        style={{
+          left: `${x}px`,
+          top: `${y}px`,
+          transform: 'translateX(-1.5px)',
+        }}
+      />
+    );
+  };
+
   return (
     <div 
       className={`
-        p-4 border-2 rounded-xl h-full flex flex-col relative
-        ${config.bgColor} ${config.borderColor}
-        ${dragOverTarget === quadrantKey ? config.dragOverBg : ''}
-        transition-all duration-200
+        p-6 border-2 rounded-2xl h-full flex flex-col relative
+        ${config.bgColor} ${config.borderColor} border-opacity-60
+        ${dragOverTarget === quadrantKey ? getDragOverStyles() : 'hover:border-opacity-80'}
+        transition-all duration-300 shadow-sm hover:shadow-md
       `}
       onDragEnter={(e) => onDragEnter(e, quadrantKey)}
       onDragLeave={onDragLeave}
@@ -329,15 +395,22 @@ export const Quadrant: React.FC<QuadrantProps> = ({
       onDrop={handleEnhancedDrop}
       ref={containerRef}
     >
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h3 className="font-bold text-lg">{config.title}</h3>
-          <p className="text-sm text-gray-600">{config.subtitle}</p>
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex-1">
+          <h3 className={`font-bold text-lg mb-1 ${getTitleColor()} transition-colors duration-200`}>
+            {config.title}
+          </h3>
+          <p className={`text-sm ${getSubtitleColor()} transition-colors duration-200`}>
+            {config.subtitle}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-500">
-            {tasks.length}
-          </span>
+        <div className="flex items-center gap-3 ml-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded-full">
+              {tasks.length}
+            </span>
+          </div>
+          
           <QuadrantMenu
             quadrantKey={quadrantKey}
             onMoveAllToMatrix={handleMoveAllToMatrix}
@@ -349,9 +422,9 @@ export const Quadrant: React.FC<QuadrantProps> = ({
 
       <div className="flex-1 overflow-visible">
         {tasks.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-gray-400">
-            <span className="text-3xl mb-2">{config.emptyIcon}</span>
-            <p className="text-sm text-center">{config.emptyText}</p>
+          <div className="h-full flex flex-col items-center justify-center text-gray-400 py-12">
+            <span className="text-4xl mb-3 opacity-60">{config.emptyIcon}</span>
+            <p className="text-sm text-center leading-relaxed max-w-48">{config.emptyText}</p>
           </div>
         )}
 
@@ -366,23 +439,12 @@ export const Quadrant: React.FC<QuadrantProps> = ({
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
                 onTaskMoved={onTaskMoved}
+                onOpenStatusPanel={onOpenStatusPanel}
               />
             ))}
             
-            {/* Insertion Preview Line */}
-            {insertionPreview && insertionPreview.quadrant === quadrantKey && (
-              <div
-                className="absolute bg-red-500 z-50 pointer-events-none"
-                style={{
-                  left: `${insertionPreview.position.x}px`,
-                  top: `${insertionPreview.position.y}px`,
-                  width: '2px',
-                  height: '32px',
-                  transform: 'translateX(-1px)',
-                  boxShadow: '0 0 4px rgba(239, 68, 68, 0.5)'
-                }}
-              />
-            )}
+            {/* Drop Indicator - Only the blinking line */}
+            {renderDropIndicator()}
           </div>
         </AnimatePresence>
       </div>
@@ -391,9 +453,10 @@ export const Quadrant: React.FC<QuadrantProps> = ({
         <button
           onClick={() => clearCompleted(quadrantKey)}
           className={`
-            mt-3 flex items-center justify-center gap-2 w-full py-2 px-3
-            text-sm rounded-lg ${config.hoverBg} transition-colors
-            text-gray-600 hover:text-gray-800
+            mt-4 flex items-center justify-center gap-2 w-full py-2.5 px-3
+            text-sm rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200
+            text-gray-600 hover:text-gray-800 transition-all duration-200
+            hover:scale-[1.02] active:scale-[0.98]
           `}
         >
           <Trash2 className="w-4 h-4" />
@@ -402,4 +465,4 @@ export const Quadrant: React.FC<QuadrantProps> = ({
       )}
     </div>
   );
-}; 
+};

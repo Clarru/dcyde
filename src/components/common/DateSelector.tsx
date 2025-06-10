@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, ChevronDown } from 'lucide-react';
+import { Calendar, ChevronDown, X, Check } from 'lucide-react';
 
 type DatePeriodType = 'quarter' | 'nextQuarter' | 'month' | 'date' | 'custom';
 
@@ -7,11 +7,19 @@ interface DateSelectorProps {
   onPeriodChange: (period: DatePeriodType, value: string) => void;
 }
 
+interface QuickOption {
+  type: DatePeriodType;
+  label: string;
+  value: string;
+  description?: string;
+}
+
 export const DateSelector: React.FC<DateSelectorProps> = ({ onPeriodChange }) => {
-  const [periodType, setPeriodType] = useState<DatePeriodType>('month');
+  const [selectedType, setSelectedType] = useState<DatePeriodType>('month');
   const [isOpen, setIsOpen] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [showCustomForm, setShowCustomForm] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -19,12 +27,14 @@ export const DateSelector: React.FC<DateSelectorProps> = ({ onPeriodChange }) =>
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setShowCustomForm(false);
       }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsOpen(false);
+        setShowCustomForm(false);
       }
     };
 
@@ -39,182 +49,242 @@ export const DateSelector: React.FC<DateSelectorProps> = ({ onPeriodChange }) =>
     };
   }, [isOpen]);
 
-  const getCurrentQuarter = () => {
-    const month = new Date().getMonth();
-    const year = new Date().getFullYear();
-    const quarter = Math.floor(month / 3) + 1;
-    return `Q${quarter} ${year}`;
+  // Generate quick options
+  const getQuickOptions = (): QuickOption[] => {
+    const now = new Date();
+    const currentMonth = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+    const currentQuarter = `Q${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`;
+    const nextQuarter = (() => {
+      const currentQ = Math.floor(now.getMonth() / 3) + 1;
+      const nextQ = currentQ === 4 ? 1 : currentQ + 1;
+      const nextYear = currentQ === 4 ? now.getFullYear() + 1 : now.getFullYear();
+      return `Q${nextQ} ${nextYear}`;
+    })();
+    const today = now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    return [
+      {
+        type: 'month',
+        label: 'This Month',
+        value: currentMonth,
+        description: currentMonth
+      },
+      {
+        type: 'quarter',
+        label: 'Current Quarter',
+        value: currentQuarter,
+        description: currentQuarter
+      },
+      {
+        type: 'nextQuarter',
+        label: 'Next Quarter',
+        value: nextQuarter,
+        description: nextQuarter
+      },
+      {
+        type: 'date',
+        label: 'Today',
+        value: today,
+        description: today
+      }
+    ];
   };
 
-  const getNextQuarter = () => {
-    const month = new Date().getMonth();
-    const year = new Date().getFullYear();
-    const currentQuarter = Math.floor(month / 3) + 1;
-    const nextQuarter = currentQuarter === 4 ? 1 : currentQuarter + 1;
-    const nextYear = currentQuarter === 4 ? year + 1 : year;
-    return `Q${nextQuarter} ${nextYear}`;
-  };
-
-  const getCurrentMonth = () => {
-    return new Date().toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long' 
-    });
-  };
-
-  const getCurrentDate = () => {
-    return new Date().toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-  };
+  const quickOptions = getQuickOptions();
+  const selectedOption = quickOptions.find(opt => opt.type === selectedType);
 
   const getDisplayValue = () => {
-    switch (periodType) {
-      case 'quarter':
-        return getCurrentQuarter();
-      case 'nextQuarter':
-        return getNextQuarter();
-      case 'month':
-        return getCurrentMonth();
-      case 'date':
-        return getCurrentDate();
-      case 'custom':
-        if (customStartDate && customEndDate) {
-          const start = new Date(customStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const end = new Date(customEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          return `${start} - ${end}`;
-        }
-        return 'Custom Range';
-      default:
-        return getCurrentMonth();
+    if (selectedType === 'custom') {
+      if (customStartDate && customEndDate) {
+        const start = new Date(customStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const end = new Date(customEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `${start} - ${end}`;
+      }
+      return 'Custom Range';
     }
+    return selectedOption?.value || 'Select Period';
   };
 
-  const handlePeriodTypeChange = (newType: DatePeriodType) => {
-    setPeriodType(newType);
+  const handleQuickSelect = (option: QuickOption) => {
+    setSelectedType(option.type);
     setIsOpen(false);
-    
-    let value = '';
-    switch (newType) {
-      case 'quarter':
-        value = getCurrentQuarter();
-        break;
-      case 'nextQuarter':
-        value = getNextQuarter();
-        break;
-      case 'month':
-        value = getCurrentMonth();
-        break;
-      case 'date':
-        value = getCurrentDate();
-        break;
-      case 'custom':
-        value = 'Custom Range';
-        break;
-    }
-    
-    onPeriodChange(newType, value);
+    setShowCustomForm(false);
+    onPeriodChange(option.type, option.value);
   };
 
-  const handleCustomDateChange = () => {
+  const handleCustomSelect = () => {
+    setShowCustomForm(true);
+    // Don't close dropdown, show custom form instead
+  };
+
+  const handleCustomSubmit = () => {
     if (customStartDate && customEndDate) {
       const start = new Date(customStartDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const end = new Date(customEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      onPeriodChange('custom', `${start} - ${end}`);
+      const value = `${start} - ${end}`;
+      
+      setSelectedType('custom');
+      setIsOpen(false);
+      setShowCustomForm(false);
+      onPeriodChange('custom', value);
     }
   };
 
+  const handleCustomCancel = () => {
+    setShowCustomForm(false);
+    setCustomStartDate('');
+    setCustomEndDate('');
+  };
+
+  const isCustomFormValid = customStartDate && customEndDate && new Date(customStartDate) <= new Date(customEndDate);
+
   return (
     <div className="relative" ref={dropdownRef}>
+      {/* Main Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        className={`
+          flex items-center gap-3 px-4 py-2.5 bg-white border rounded-lg transition-all duration-200
+          ${isOpen 
+            ? 'border-blue-500 ring-2 ring-blue-100 shadow-md' 
+            : 'border-gray-300 hover:border-gray-400 hover:shadow-sm'
+          }
+          focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100
+        `}
       >
-        <Calendar className="w-4 h-4 text-gray-500" />
-        <span className="font-medium text-gray-900">{getDisplayValue()}</span>
-        <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <Calendar className="w-4 h-4 text-gray-500 flex-shrink-0" />
+        <span className="font-medium text-gray-900 min-w-0 truncate">
+          {getDisplayValue()}
+        </span>
+        <ChevronDown 
+          className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180' : ''
+          }`} 
+        />
       </button>
 
+      {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-300 rounded-lg shadow-lg z-10">
-          <div className="p-2">
-            <button
-              onClick={() => handlePeriodTypeChange('quarter')}
-              className={`w-full text-left px-3 py-2 rounded hover:bg-gray-50 ${
-                periodType === 'quarter' ? 'bg-blue-50 text-blue-700' : ''
-              }`}
-            >
-              Current Quarter ({getCurrentQuarter()})
-            </button>
-            <button
-              onClick={() => handlePeriodTypeChange('nextQuarter')}
-              className={`w-full text-left px-3 py-2 rounded hover:bg-gray-50 ${
-                periodType === 'nextQuarter' ? 'bg-blue-50 text-blue-700' : ''
-              }`}
-            >
-              Next Quarter ({getNextQuarter()})
-            </button>
-            <button
-              onClick={() => handlePeriodTypeChange('month')}
-              className={`w-full text-left px-3 py-2 rounded hover:bg-gray-50 ${
-                periodType === 'month' ? 'bg-blue-50 text-blue-700' : ''
-              }`}
-            >
-              Current Month ({getCurrentMonth()})
-            </button>
-            <button
-              onClick={() => handlePeriodTypeChange('date')}
-              className={`w-full text-left px-3 py-2 rounded hover:bg-gray-50 ${
-                periodType === 'date' ? 'bg-blue-50 text-blue-700' : ''
-              }`}
-            >
-              Today ({getCurrentDate()})
-            </button>
-            <button
-              onClick={() => handlePeriodTypeChange('custom')}
-              className={`w-full text-left px-3 py-2 rounded hover:bg-gray-50 ${
-                periodType === 'custom' ? 'bg-blue-50 text-blue-700' : ''
-              }`}
-            >
-              Custom Range
-            </button>
-            
-            {periodType === 'custom' && (
-              <div className="mt-2 p-3 border-t border-gray-200">
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">From</label>
-                    <input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="w-full text-sm border border-gray-300 rounded px-2 py-1"
-                    />
+        <div className="absolute top-full left-0 mt-2 w-80 bg-white border border-gray-200 rounded-xl shadow-xl z-[10000] overflow-hidden">
+          {!showCustomForm ? (
+            <>
+              {/* Quick Options */}
+              <div className="p-3">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Select</h3>
+                <div className="space-y-1">
+                  {quickOptions.map((option) => (
+                    <button
+                      key={option.type}
+                      onClick={() => handleQuickSelect(option)}
+                      className={`
+                        w-full flex items-center justify-between p-3 rounded-lg text-left transition-all duration-150
+                        ${selectedType === option.type 
+                          ? 'bg-blue-50 border border-blue-200 text-blue-900' 
+                          : 'hover:bg-gray-50 border border-transparent'
+                        }
+                      `}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">{option.label}</div>
+                        <div className="text-xs text-gray-500 mt-0.5">{option.description}</div>
+                      </div>
+                      {selectedType === option.type && (
+                        <Check className="w-4 h-4 text-blue-600 flex-shrink-0 ml-2" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-gray-200" />
+
+              {/* Custom Range Option */}
+              <div className="p-3">
+                <button
+                  onClick={handleCustomSelect}
+                  className={`
+                    w-full flex items-center justify-between p-3 rounded-lg text-left transition-all duration-150
+                    ${selectedType === 'custom' 
+                      ? 'bg-blue-50 border border-blue-200 text-blue-900' 
+                      : 'hover:bg-gray-50 border border-transparent'
+                    }
+                  `}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm">Custom Range</div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {selectedType === 'custom' && customStartDate && customEndDate
+                        ? `${new Date(customStartDate).toLocaleDateString()} - ${new Date(customEndDate).toLocaleDateString()}`
+                        : 'Choose your own date range'
+                      }
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">To</label>
-                    <input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="w-full text-sm border border-gray-300 rounded px-2 py-1"
-                    />
-                  </div>
+                  {selectedType === 'custom' && (
+                    <Check className="w-4 h-4 text-blue-600 flex-shrink-0 ml-2" />
+                  )}
+                </button>
+              </div>
+            </>
+          ) : (
+            /* Custom Date Form */
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-gray-900">Custom Date Range</h3>
+                <button
+                  onClick={handleCustomCancel}
+                  className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-2">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    min={customStartDate}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
                   <button
-                    onClick={handleCustomDateChange}
-                    disabled={!customStartDate || !customEndDate}
-                    className="w-full mt-2 px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleCustomCancel}
+                    className="flex-1 px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCustomSubmit}
+                    disabled={!isCustomFormValid}
+                    className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-lg transition-colors"
                   >
                     Apply Range
                   </button>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
-}; 
+};

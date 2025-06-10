@@ -30,8 +30,9 @@ function HomePage() {
     }
   };
 
-  // Migration: If no matrices exist but there are tasks in the old store, migrate them
+  // Migration: Only migrate if no matrices exist AND there are tasks AND this is the initial load
   useEffect(() => {
+    // Only run migration on initial load when there are no matrices but tasks exist
     if (matrices.length === 0) {
       const hasExistingTasks = 
         taskStore.unassigned.length > 0 ||
@@ -40,7 +41,10 @@ function HomePage() {
         taskStore.delegate.length > 0 ||
         taskStore.eliminate.length > 0;
 
+      // Only migrate if there are actually tasks to migrate
+      // This prevents creating empty "Migrated Matrix" when user deletes all matrices
       if (hasExistingTasks) {
+        console.log('Migrating existing tasks to new matrix...');
         const migratedMatrixId = migrateFromTaskStore({
           unassigned: taskStore.unassigned,
           doFirst: taskStore.doFirst,
@@ -53,7 +57,7 @@ function HomePage() {
         handleNavigateToMatrix(migratedMatrixId);
       }
     }
-  }, [matrices.length, taskStore, migrateFromTaskStore, handleNavigateToMatrix]);
+  }, []); // Empty dependency array - only run on mount
 
   return (
     <AllMatricesPage 
@@ -70,6 +74,13 @@ function MatrixPageWrapper() {
   // Find matrix by slug
   const matrix = findMatrixBySlug(matrices, matrixSlug || '');
 
+  // Move useEffect to top level and add conditional logic inside
+  useEffect(() => {
+    if (!matrix) {
+      navigate('/');
+    }
+  }, [matrix, navigate]);
+
   const handleNavigateToAll = () => {
     navigate('/');
   };
@@ -84,9 +95,6 @@ function MatrixPageWrapper() {
 
   if (!matrix) {
     // Matrix not found, redirect to home
-    useEffect(() => {
-      navigate('/');
-    }, [navigate]);
     return <div>Matrix not found...</div>;
   }
 

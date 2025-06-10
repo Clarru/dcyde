@@ -66,8 +66,8 @@ export const EnhancedContextMenu: React.FC<EnhancedContextMenuProps> = ({
     };
   }, [onClose, activeSubmenu]);
 
-  // Adjust position if menu would go off-screen
-  const adjustedX = Math.min(x, window.innerWidth - 220);
+  // Adjust position if menu would go off-screen - increased width by 30px
+  const adjustedX = Math.min(x, window.innerWidth - 250); // Changed from 220 to 250
   const adjustedY = Math.min(y, window.innerHeight - (options.length * 40 + 16));
 
   const handleOptionClick = (option: MenuOption, index: number) => {
@@ -107,7 +107,7 @@ export const EnhancedContextMenu: React.FC<EnhancedContextMenuProps> = ({
       {/* Main Menu */}
       <div
         ref={menuRef}
-        className="fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[200px]"
+        className="fixed z-[10000] bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[230px]"
         style={{
           left: `${adjustedX}px`,
           top: `${adjustedY}px`,
@@ -151,9 +151,9 @@ export const EnhancedContextMenu: React.FC<EnhancedContextMenuProps> = ({
       {activeSubmenu !== null && submenuPosition && options[activeSubmenu]?.submenu && (
         <div
           data-submenu="true"
-          className="fixed z-[10001] bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[180px] pointer-events-auto"
+          className="fixed z-[10001] bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[210px] pointer-events-auto"
           style={{
-            left: `${Math.min(submenuPosition.x, window.innerWidth - 200)}px`,
+            left: `${Math.min(submenuPosition.x, window.innerWidth - 230)}px`,
             top: `${Math.min(submenuPosition.y, window.innerHeight - (options[activeSubmenu]!.submenu!.length * 40 + 16))}px`,
           }}
           onMouseDown={(e) => {
@@ -196,4 +196,4 @@ export const EnhancedContextMenu: React.FC<EnhancedContextMenuProps> = ({
       )}
     </>
   );
-}; 
+};
